@@ -4,12 +4,12 @@
 This open-source project is designed to enhance your Suricata intrusion prevention system by providing a unique set of rules specifically crafted to detect and mitigate potential threats before they lead to a compromise.
 
 ## Usage
-
-![Suricata Configuration Example](/assets/images/suricata-config.JPG)
-
 - Download the BtH database (bth.rules)
 - Edit the /etc/suricata/suricata.yaml
   - Add the path for bth.rules to the 'rule-files' section
+ 
+![Suricata Configuration Example](/assets/images/suricata-config.JPG)
+
 - Restart the Suricata service
 
 ## Features
