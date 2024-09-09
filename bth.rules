@@ -1,0 +1,5 @@
+alert udp any any -> any 5355 (msg:"LLMNR Query Detected."; sid:1500000; rev: 1; noalert;)
+alert udp any 5355 -> any any (msg:"LLMNR Response Detected."; sid:1500001; rev:1; noalert;)
+alert tcp any any -> any 445 (msg:"SMB NTLMSSP_NEGOTIATE Detected."; sid:1500002; rev:1; content:"|4e 54 4c 4d 53 53 50 00|"; content:"|01 00 00 00|"; xbits:set,smb-1,track ip_pair, expire 180; noalert;)
+alert tcp any any -> any 445 (msg:"SMB NTLMSSP_AUTH Detected."; sid:1500003; rev:1; content:"|4e 54 4c 4d 53 53 50 00|"; content:"|03 00 00 00|"; xbits:set,smb-2,track ip_pair, expire 180; noalert;)
+alert tcp any 445 -> any any (msg:"Responder Sequence Detected!"; sid:150004; rev:1; content:"|22 00 00 c0|"; xbits:isset,smb-1,track ip_pair; xbits:isset,smb-2,track ip_pair;)
