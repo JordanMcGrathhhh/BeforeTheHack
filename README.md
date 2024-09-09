@@ -7,8 +7,8 @@ This open-source project is designed to enhance your Suricata intrusion preventi
 - Download the BtH database (bth.rules)
 - Edit the /etc/suricata/suricata.yaml
   - Add the path for bth.rules to the 'rule-files' section
-  ![Suricata Configuration Example](/assets/images/suricata-config.JPG)
 - Restart the Suricata service
+![Suricata Configuration Example](/assets/images/suricata-config.JPG)
 
 ## Features
 - Proactive Threat Detection: Unlike traditional rule databases that focus on identifying exploits as they occur, the BtH ruleset is engineered to anticipate and detect potential threats before they can exploit vulnerabilities.
