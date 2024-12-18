@@ -1,5 +1,41 @@
+# Tool: Responder, Method: LLMNR Poisoning to Solicit SMB NTLMSSP_AUTH
 alert udp any any -> any 5355 (msg:"LLMNR Query Detected."; sid:1500000; rev: 1; noalert;)
-alert udp any 5355 -> any any (msg:"LLMNR Response Detected."; sid:1500001; rev:1; noalert;)
+alert udp any 5355 -> any any (msg:"LLMNR Response Detected."; sid:1500001; rev:1; xbits:set,llmnr-2,track ip_pair, expire 180; noalert;)
 alert tcp any any -> any 445 (msg:"SMB NTLMSSP_NEGOTIATE Detected."; sid:1500002; rev:1; content:"|4e 54 4c 4d 53 53 50 00|"; content:"|01 00 00 00|"; xbits:set,smb-1,track ip_pair, expire 180; noalert;)
 alert tcp any any -> any 445 (msg:"SMB NTLMSSP_AUTH Detected."; sid:1500003; rev:1; content:"|4e 54 4c 4d 53 53 50 00|"; content:"|03 00 00 00|"; xbits:set,smb-2,track ip_pair, expire 180; noalert;)
-alert tcp any 445 -> any any (msg:"Responder Sequence Detected!"; sid:150004; rev:1; content:"|22 00 00 c0|"; xbits:isset,smb-1,track ip_pair; xbits:isset,smb-2,track ip_pair;)
+alert tcp any 445 -> any any (msg:"Responder SMB Sequence Detected!"; sid:150004; rev:1; content:"|22 00 00 c0|"; xbits:isset,llmnr-2,track ip_pair; xbits:isset,smb-1,track ip_pair; xbits:isset,smb-2,track ip_pair;)
+# Tool: Responder, Method: Malicious WPAD Entry Injection in DHCP Offer - check offset
+alert udp 0.0.0.0 68 -> 255.255.255.255 67 (msg:"DHCP Discover Request Detected."; sid:150005; rev:1; content:"|01|"; offset:284; noalert;)
+alert udp any 67 -> any 68 (msg:"DHCP Offer w/ WPAD Detected!"; sid:150006; rev:1; content:"wpad.dat"; nocase;)
+# Tool: *, Method: Port Scanning
+# Why is this so hard? What we call "Port Scanning" happens constantly throughout the network. The act of sending a Syn packet, or any other "scanning" packet, is not unique 
+# to port scanning. This means that being too aggressive in our search will lead to a ton of false positives. On top of that, tools such as Nmap have built-in IDS/IPS
+# evasion modes. Nmap's -T1 mode, nicknamed paranoid-mode, will wait five minutes between probes. This is essentially impossible to detect feasibly with Suricata. 
+# So why did we choose 10 and 5 for our threshold? Nmap's -T2 waits 0.4 seconds between probes, Suricata will still catch this.
+alert tcp any any -> any ![80, 443] (msg:"SYN/Connect() Scan Detected! (Default: count=10, time limit=5)"; sid:150007; rev:1; tcp.flags:S; threshold: type both, track by_src, count 10, seconds 5;)
+alert tcp any any -> any ![80, 443] (msg:"FIN Scan Detected! (Default: count=10, time limit=5)"; sid:150008; rev:1; tcp.flags:F; threshold: type both, track by_src, count 10, seconds 5;)
+alert tcp any any -> any ![80, 443] (msg:"Xmas Scan Detected! (Default: count=10, time limit=5)"; sid:150009; rev:1; tcp.flags:FPU; threshold: type both, track by_src, count 10, seconds 5;)
+#alert tcp any any -> any ![80, 443] (msg:"ACK/Window Scan Detected! (Default: count=10, time limit=5)"; sid:150010; rev:1; tcp.flags:A; flow: stateless; threshold: type both, track by_src, count 10, seconds 5;)
+alert tcp any any -> any ![80, 443] (msg:"Maimon Scan Detected! (Default: count=10, time limit=5)"; sid:150011; rev:1; tcp.flags:FA; threshold: type both, track by_src, count 10, seconds 5;)
+# Tool: *, Method: SMB Brute Force
+alert tcp any 445 -> any any (msg:"SMB Brute Force Detected! (Default: count=10, time limit=120)"; sid:150012; rev:1; content:"|6d 00 00 c0|"; threshold: type both, track by_src, count 10, seconds 120;)
+# Tool: *, Method: SMB Anonymous Login
+alert tcp any any -> any 445 (msg:"SMB Anonymous Login Requested."; sid:150013; rev:1; content:"|00 00 00 00 66 00 00 00|"; offset:205; xbits:set,smb-anon-1,track ip_pair, expire 60;)
+alert tcp any 445 -> any any (msg:"SMB Anonymous Login Detected!"; sid:150014; rev:1; content:"|00 00 00 00|"; offset:78; xbits:isset,smb-anon-1,track ip_pair; threshold: type both, track by_dst, count 1, seconds 120;)
+# Tool: *, Method: Kerberos Brute Force
+alert tcp any any -> any 88 (msg:"Kerberos AS-REQ Detected."; sid:150015; rev:1; krb5_msg_type:10; xbits:set,krb-1,track ip_pair, expire 180;)
+alert tcp any 88 -> any any (msg:"Kerberos Brute Force Detected!"; sid:150016; rev:1; krb5_msg_type:30; krb5_err_code: 6; xbits:isset,krb-1,track ip_pair; threshold: type both, track by_dst, count 5, seconds 60;) 
+# Tool: *, Method: FTP Anonymous Login
+# alert ftp any any -> any any (msg:"FTP Traffic"; sid:150017; rev:1; noalert;)
+# alert ftp-data any any -> any any (msg:"FTP Login Successful!"; sid:150019; rev:1; content:"230 "; nocase;)
+# Tool: *, Method: FTP Anonymous Activity
+# alert ftp-data any any -> any any (msg:"FTP Anonymous Activity - STOR"; sid:150020; rev:1; ftpdata_command:stor;)
+# alert ftp-data any any -> any any (msg:"FTP Anonymous Activity - RETR"; sid:150021; rev:1; ftpdata_command:retr;)
+# Tool: *, Method: FTP Brute Force
+# Tool: *, Method: Bash backdoor
+alert tcp any any -> any any (msg:"Potential Unencrypted Backdoor Detected!"; sid:150022; rev:1; content:"@"; pcre:"/[A-z0-9\-]+@[A-z0-9\-]+:/i"; threshold: type limit, track by_both, seconds 180, count 1;)
+# Tool: Python3, Method: SimpleHTTP Server
+alert http any any -> any any (msg:"Python SimpleHTTP Server Detected!"; sid:150023; rev:1; http.server; content:"SimpleHTTP"; nocase;)
+# Tool: *, Method: DNS SRV Recon
+alert dns any any -> any any (msg:"DNS SRV Query Detected"; dns.query; content:"_"; dns.qry.type; content:"SRV"; sid:150024; rev:1;)
+
